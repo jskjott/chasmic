@@ -13,6 +13,7 @@ use std::fs;
 use std::fs::OpenOptions;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::str;
 
 use std::io::Write;
 
@@ -48,9 +49,7 @@ fn main() {
                 println!("	{:?}", idea);
             }
         }
-        ("edit", Some(_sub_matches)) => {
-            chasm.edit()
-        }
+        ("edit", Some(_sub_matches)) => chasm.edit(),
         ("idea", Some(sub_matches)) => {
             let idea = sub_matches.value_of("idea");
 
@@ -70,18 +69,85 @@ fn main() {
             }
         }
         ("log", Some(_sub_matches)) => {
-            println!("log: 	-------------------------------------");
+            println!("				._               ");
+            println!("				| |    ____   ____  ");
+            println!("				| |   /  _ \\ / ___\\ ");
+            println!("				| |__(  <_> ) /_/  >");
+            println!("				|____|\\____/\\___  / ");
+            println!("				           /_____/  ");
+            println!("	-----------------------------------------");
+
             let log = chasm.create_log();
-            for entry in log {
-                println!("	| {:?} ------ {:?}", entry.time, entry.thoughts);
+
+            for entry in &log {
+                let string = &entry.thoughts;
+
+                let sub_len = 100;
+                let subs = string
+                    .as_bytes()
+                    .chunks(sub_len)
+                    .map(str::from_utf8)
+                    .collect::<Result<Vec<&str>, _>>()
+                    .unwrap();
+
+                println!("	| {:?} ------------ {:?}", entry.time, entry.idea);
+                for sub in subs {
+                    println!("	| {:?}", sub);
+                }
+                println!("	-----------------------------------------");
             }
+
+            let degree = vec![" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
+
+            let dict = chasm.create_dict();
+
+            let mut unique_dates: HashMap<String, u32> = HashMap::new();
+
+            for entry in &log {
+                if !unique_dates.contains_key(&entry.time.to_string()) {
+                    let index = unique_dates.len() as u32;
+
+                    // todo don't clone
+                    unique_dates.insert(entry.time.clone().to_string(), index);
+                }
+            }
+
+            for (_key, value) in dict {
+                let mut data = vec![0; unique_dates.len()];
+
+                for entry in value.entries {
+                    let index: usize =
+                    	// todo don't clone
+                        *unique_dates.get(&entry.time.clone().to_string()).unwrap() as usize;
+                    data[index] = data[index] + 1
+                }
+
+                let mut string = String::from("");
+
+                for day in data {
+                    string.push_str(degree[day]);
+                }
+                println!("	 {}", string);
+            }
+
+            println!("");
         }
         ("hist", Some(sub_matches)) => {
+            println!("		     ___ ___ .__          __   ");
+            println!("		    /   |   \\|__| _______/  |_ ");
+            println!("		   /    ~    \\  |/  ___/\\   __\\");
+            println!("		   \\    Y    /  |\\___ \\  |  |  ");
+            println!("		    \\___|_  /|__/____  > |__|  ");
+            println!("		          \\/         \\/         	");
+
             let idea = sub_matches.value_of("idea");
 
             match idea {
                 Some(idea) => {
+                	
+
                     println!("{:?}: -------------------------------------", idea);
+
                     let log = chasm.create_log();
                     for entry in log {
                         if entry.idea == idea {
@@ -93,7 +159,7 @@ fn main() {
             }
         }
         _ => {
-            println!("not a valid subcommand");
+            println!("no a valid subcommand");
         }
     }
 }
@@ -105,15 +171,12 @@ struct Entry {
 }
 
 struct Idea {
-    description: String,
     entries: Vec<Entry>,
 }
 
 struct Chasm {
     ideas_file: PathBuf,
     log_file: PathBuf,
-    log: Vec<Entry>,
-    dictionary: HashMap<String, Idea>,
 }
 
 impl Chasm {
@@ -128,6 +191,7 @@ impl Chasm {
             fs::create_dir(&home_dir).unwrap();
         }
 
+        // todo don't clone
         let mut log_file = home_dir.clone();
         log_file.push("log");
 
@@ -136,6 +200,7 @@ impl Chasm {
             println!("generated a log file at {}", log_file.to_str().unwrap());
         }
 
+        // todo don't clone
         let mut ideas_file = home_dir.clone();
         ideas_file.push("ideas");
 
@@ -150,8 +215,6 @@ impl Chasm {
         Chasm {
             ideas_file,
             log_file,
-            log: vec![],
-            dictionary: HashMap::new(),
         }
     }
 
@@ -198,6 +261,7 @@ impl Chasm {
             let string = parts[1].to_string();
 
             if dictionary.contains_key(&string) {
+            	// todo don't clone
                 let string = parts[1].clone();
                 let idea = dictionary.get_mut(string);
 
@@ -219,8 +283,6 @@ impl Chasm {
                 entries.push(entry);
 
                 let idea = Idea {
-                    description: parts[1].to_string(),
-
                     entries,
                 };
 
@@ -232,10 +294,8 @@ impl Chasm {
         dictionary
     }
 
-    fn create_dictionary(&self) {}
-
     fn edit(&self) {
-        open::that(&self.ideas_file);
+        let _ = open::that(&self.ideas_file);
     }
 
     fn idea(&self, idea: &str) {
@@ -244,7 +304,7 @@ impl Chasm {
             .open(&self.ideas_file)
             .unwrap();
 
-        write!(&file, "{}\n", idea,);
+        let _ = write!(&file, "{}\n", idea,);
     }
 
     fn entry(&self, idea: &str, text: &str) {
@@ -254,7 +314,7 @@ impl Chasm {
             .unwrap();
         let time = Local::now();
 
-        write!(&file, "{:?} | {} | {}\n", time, idea, text,);
+        let _ = write!(&file, "{:?} | {} | {}\n", time, idea, text,);
     }
 
     fn cur(&self) -> Vec<String> {
